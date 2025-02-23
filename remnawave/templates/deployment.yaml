@@ -1,0 +1,158 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "remnawave.fullname" . }}
+  labels:
+    {{- include "remnawave.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "remnawave.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "remnawave.labels" . | nindent 8 }}
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "remnawave.serviceAccountName" . }}
+      {{- with .Values.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: {{ .Chart.Name }}
+          {{- with .Values.securityContext }}
+          env:
+            - name: DATABASE_URL
+              {{ if .Values.remna.existingSecret }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.remna.existingSecret }}
+                  key: database_url
+              {{ else }}
+              value: {{ .Values.remna.databaseUrl }}
+              {{ end }}
+            - name: JWT_AUTH_SECRET
+              {{ if .Values.remna.existingSecret }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.remna.existingSecret }}
+                  key: jwt_auth_secret
+              {{ else }}
+              value: {{ .Values.remna.jwt.authSecret }}
+              {{ end }}
+            - name: JWT_API_TOKENS_SECRET
+              {{ if .Values.remna.existingSecret }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.remna.existingSecret }}
+                  key: jwt_api_tokens_secret
+              {{ else }}
+              value: {{ .Values.remna.jwt.apiTokensSecret }}
+              {{ end }}
+            - name: IS_TELEGRAM_ENABLED
+              value: {{ .Values.remna.telegram.enabled }}
+            - name: TELEGRAM_ADMIN_ID
+              {{ if .Values.remna.existingSecret }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.remna.existingSecret }}
+                  key: telegram_admin_id
+              {{ else }}
+              value: {{ .Values.remna.telegram.adminId }}
+              {{ end }}
+            - name: TELEGRAM_BOT_TOKEN
+              {{ if .Values.remna.existingSecret }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.remna.existingSecret }}
+                  key: telegram_bot_token
+              {{ else }}
+              value: {{ .Values.remna.telegram.botToken }}
+              {{ end }}
+            - name: NODES_NOTIFY_CHAT_ID
+              {{ if .Values.remna.existingSecret }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.remna.existingSecret }}
+                  key: telegram_chat_id
+              {{ else }}
+              value: {{ .Values.remna.telegram.chatId }}
+              {{ end }}
+            - name: FRONT_END_DOMAIN
+              value: {{ .Values.remna.frontendDomain }}
+            - name: SUB_SUPPORT_URL
+              value: {{ .Values.remna.subscription.supportUrl }}
+            - name: SUB_PROFILE_TITLE
+              value: {{ .Values.remna.subscription.profileTitle }}
+            - name: SUB_UPDATE_INTERVAL
+              value: {{ .Values.remna.subscription.updateInterval }}
+            - name: SUB_WEBPAGE_URL
+              value: {{ .Values.remna.subscription.webpageUrl }}
+            - name: SUB_PUBLIC_DOMAIN
+              value: {{ .Values.remna.subscription.publicDomain }}
+            - name: SUPERADMIN_USERNAME
+              value: {{ .Values.remna.admin.username }}
+            - name: SUPERADMIN_PASSWORD
+              {{ if .Values.remna.existingSecret }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.remna.existingSecret }}
+                  key: admin_password
+              {{ else }}
+              value: {{ .Values.remna.admin.password }}
+              {{ end }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.service.port }}
+              protocol: TCP
+          {{- with .Values.livenessProbe }}
+          livenessProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.readinessProbe }}
+          readinessProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.volumeMounts }}
+          volumeMounts:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+      {{- with .Values.volumes }}
+      volumes:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
